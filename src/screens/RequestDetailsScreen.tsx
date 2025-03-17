@@ -8,22 +8,26 @@ import {
   TouchableOpacity,
   Alert,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {
   getRequestById,
   getProposals,
   saveProposal,
+  getRatings,
 } from '../services/firebaseHelpers';
-import {Request, Proposal} from '../types';
+import {Request, Proposal, Rating} from '../types';
 import {RootStackParamList} from '../types/navigation';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'RequestDetails'>;
 
-export const RequestDetailsScreen: React.FC<Props> = ({route}) => {
+export const RequestDetailsScreen: React.FC<Props> = ({route, navigation}) => {
   const {requestId} = route.params;
   const [request, setRequest] = useState<Request | null>(null);
   const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [ratings, setRatings] = useState<Record<string, Rating[]>>({});
+  const [loading, setLoading] = useState(true);
   const [price, setPrice] = useState('');
   const [description, setDescription] = useState('');
 
@@ -34,9 +38,19 @@ export const RequestDetailsScreen: React.FC<Props> = ({route}) => {
         setRequest(requestData);
         const proposalsData = await getProposals(requestId);
         setProposals(proposalsData);
+
+        // Загружаем рейтинги для каждого предложения
+        const ratingsData: Record<string, Rating[]> = {};
+        for (const proposal of proposalsData) {
+          const proposalRatings = await getRatings(proposal.id);
+          ratingsData[proposal.id] = proposalRatings;
+        }
+        setRatings(ratingsData);
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to load request details');
+    } finally {
+      setLoading(false);
     }
   }, [requestId]);
 
@@ -67,6 +81,27 @@ export const RequestDetailsScreen: React.FC<Props> = ({route}) => {
     } catch (error) {
       Alert.alert('Error', 'Failed to submit proposal');
     }
+  };
+
+  const handleRateProposal = (proposalId: string) => {
+    navigation.navigate('Rating', {proposalId});
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color="#f4511e" />
+      </View>
+    );
+  }
+
+  const getAverageRating = (proposalId: string): number => {
+    const proposalRatings = ratings[proposalId] || [];
+    if (proposalRatings.length === 0) {
+      return 0;
+    }
+    const sum = proposalRatings.reduce((acc, curr) => acc + curr.rating, 0);
+    return sum / proposalRatings.length;
   };
 
   if (!request) {
@@ -124,6 +159,16 @@ export const RequestDetailsScreen: React.FC<Props> = ({route}) => {
             <Text style={styles.proposalDescription}>
               {proposal.description}
             </Text>
+            <View style={styles.ratingContainer}>
+              <Text style={styles.ratingText}>
+                Rating: {getAverageRating(proposal.id).toFixed(1)} ★
+              </Text>
+              <TouchableOpacity
+                style={styles.rateButton}
+                onPress={() => handleRateProposal(proposal.id)}>
+                <Text style={styles.rateButtonText}>Rate</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         ))}
       </View>
@@ -134,6 +179,12 @@ export const RequestDetailsScreen: React.FC<Props> = ({route}) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#fff',
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: '#fff',
   },
   requestDetails: {
@@ -196,18 +247,40 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   proposalCard: {
-    borderWidth: 1,
-    borderColor: '#ddd',
+    backgroundColor: '#fff',
     borderRadius: 8,
     padding: 16,
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#eee',
   },
   price: {
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: 'bold',
+    color: '#f4511e',
     marginBottom: 8,
   },
   proposalDescription: {
     fontSize: 16,
+  },
+  ratingContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  ratingText: {
+    fontSize: 16,
+    color: '#666',
+  },
+  rateButton: {
+    backgroundColor: '#f4511e',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 4,
+  },
+  rateButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
 });

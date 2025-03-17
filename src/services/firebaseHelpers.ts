@@ -58,20 +58,20 @@ export const getProposals = async (requestId: string) => {
 
 // Ratings
 export const saveRating = async (
-  proposalId: string,
-  rating: Omit<Rating, 'id'>,
-) => {
-  console.log('Saving mock rating:', rating);
-  const id = `rating_${Date.now()}`;
-  if (!mockRatings[proposalId]) {
-    mockRatings[proposalId] = [];
-  }
-  mockRatings[proposalId].push({
+  ratingData: Omit<Rating, 'id'>,
+): Promise<string> => {
+  const id = `rating-${Date.now()}`;
+  mockRatings[id] = {
+    ...ratingData,
     id,
-    proposalId,
-    ...rating,
-  } as Rating);
+  };
   return id;
+};
+
+export const getRatings = async (proposalId: string): Promise<Rating[]> => {
+  return Object.values(mockRatings).filter(
+    rating => rating.proposalId === proposalId,
+  );
 };
 
 // Upload media

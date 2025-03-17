@@ -2,77 +2,96 @@ import React, {useState} from 'react';
 import {
   View,
   Text,
-  TextInput,
   StyleSheet,
+  TextInput,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/FontAwesome';
+import {NativeStackScreenProps} from '@react-navigation/native-stack';
+import {RootStackParamList} from '../types/navigation';
 import {saveRating} from '../services/firebaseHelpers';
-import {useNavigation, useRoute} from '@react-navigation/native';
 
-export const RatingScreen = () => {
+type Props = NativeStackScreenProps<RootStackParamList, 'Rating'>;
+
+const MAX_RATING = 5;
+
+export const RatingScreen: React.FC<Props> = ({route, navigation}) => {
+  const {proposalId} = route.params;
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
-  const navigation = useNavigation();
-  const route = useRoute();
-  const {proposalId, providerId} = route.params as {
-    proposalId: string;
-    providerId: string;
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleStarPress = (selectedRating: number) => {
+    setRating(selectedRating);
   };
 
   const handleSubmit = async () => {
-    try {
-      if (rating === 0) {
-        Alert.alert('Error', 'Please select rating');
-        return;
-      }
+    if (rating === 0) {
+      Alert.alert('Error', 'Please select a rating');
+      return;
+    }
 
-      await saveRating(proposalId, {
-        providerId,
-        stars: rating,
+    setIsSubmitting(true);
+    try {
+      await saveRating({
+        proposalId,
+        rating,
         comment,
         createdAt: new Date(),
       });
-
-      Alert.alert('Success', 'Rating submitted successfully');
-      navigation.goBack();
+      Alert.alert('Success', 'Thank you for your rating!', [
+        {text: 'OK', onPress: () => navigation.goBack()},
+      ]);
     } catch (error) {
       console.error('Error saving rating:', error);
-      Alert.alert('Error', 'Failed to submit rating');
+      Alert.alert('Error', 'Failed to save rating');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Rate Service Provider</Text>
+      <Text style={styles.title}>Rate the Service</Text>
 
       <View style={styles.starsContainer}>
-        {[1, 2, 3, 4, 5].map(star => (
+        {[...Array(MAX_RATING)].map((_, index) => (
           <TouchableOpacity
-            key={star}
-            onPress={() => setRating(star)}
-            style={styles.starButton}>
-            <Icon
-              name={star <= rating ? 'star' : 'star-o'}
-              size={40}
-              color="#f4511e"
-            />
+            key={index}
+            onPress={() => handleStarPress(index + 1)}
+            disabled={isSubmitting}>
+            <Text style={[styles.star, rating > index && styles.starSelected]}>
+              ★
+            </Text>
           </TouchableOpacity>
         ))}
       </View>
 
+      <Text style={styles.ratingText}>
+        {rating > 0 ? `${rating} of ${MAX_RATING} stars` : 'Select rating'}
+      </Text>
+
+      <Text style={styles.label}>Comment (optional)</Text>
       <TextInput
         style={styles.input}
-        placeholder="Add a comment (optional)"
+        placeholder="Share your experience..."
         value={comment}
         onChangeText={setComment}
         multiline
         numberOfLines={4}
+        editable={!isSubmitting}
       />
 
-      <TouchableOpacity style={styles.button} onPress={handleSubmit}>
-        <Text style={styles.buttonText}>Submit Rating</Text>
+      <TouchableOpacity
+        style={[styles.submitButton, isSubmitting && styles.buttonDisabled]}
+        onPress={handleSubmit}
+        disabled={isSubmitting}>
+        {isSubmitting ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.submitButtonText}>Submit Rating</Text>
+        )}
       </TouchableOpacity>
     </View>
   );
@@ -93,27 +112,48 @@ const styles = StyleSheet.create({
   starsContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginBottom: 30,
+    marginBottom: 10,
   },
-  starButton: {
-    padding: 5,
+  star: {
+    fontSize: 40,
+    color: '#ddd',
+    marginHorizontal: 5,
+  },
+  starSelected: {
+    color: '#ffd700',
+  },
+  ratingText: {
+    textAlign: 'center',
+    fontSize: 16,
+    marginBottom: 20,
+    color: '#666',
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#333',
   },
   input: {
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 8,
-    padding: 10,
+    padding: 12,
     marginBottom: 20,
-    minHeight: 100,
+    height: 120,
     textAlignVertical: 'top',
+    fontSize: 16,
   },
-  button: {
+  submitButton: {
     backgroundColor: '#f4511e',
-    padding: 15,
+    padding: 16,
     borderRadius: 8,
     alignItems: 'center',
   },
-  buttonText: {
+  buttonDisabled: {
+    backgroundColor: '#ccc',
+  },
+  submitButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',

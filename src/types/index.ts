@@ -26,7 +26,6 @@ export interface Proposal {
 export interface Rating {
   id: string;
   proposalId: string;
-  userId: string;
   rating: number;
   comment: string;
   createdAt: Date;
