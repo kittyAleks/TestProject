@@ -1,26 +1,22 @@
 import React, {useEffect, useState} from 'react';
 import {
   View,
-  FlatList,
+  Text,
   StyleSheet,
-  ActivityIndicator,
+  FlatList,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
-import {RequestCard} from '../components/RequestCard';
+import {NativeStackScreenProps} from '@react-navigation/native-stack';
+import {getRequests} from '../services/firebaseHelpers';
 import {Request} from '../types';
-import {getRequests} from '../services/firebase';
-import Icon from 'react-native-vector-icons/FontAwesome';
-import {useNavigation} from '@react-navigation/native';
-import {ROUTES} from '../constants';
+import {RootStackParamList} from '../types/navigation';
 
-export const HomeScreen = () => {
+type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
+
+export const HomeScreen: React.FC<Props> = ({navigation}) => {
   const [requests, setRequests] = useState<Request[]>([]);
   const [loading, setLoading] = useState(true);
-  const navigation = useNavigation();
-
-  useEffect(() => {
-    loadRequests();
-  }, []);
 
   const loadRequests = async () => {
     try {
@@ -28,15 +24,28 @@ export const HomeScreen = () => {
       setRequests(data);
     } catch (error) {
       console.error('Error loading requests:', error);
+      Alert.alert('Error', 'Failed to load requests');
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    loadRequests();
+  }, []);
+
+  const handleAddRequest = () => {
+    navigation.navigate('AddRequest');
+  };
+
+  const handleRequestPress = (requestId: string) => {
+    navigation.navigate('RequestDetails', {requestId});
+  };
+
   if (loading) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#f4511e" />
+      <View style={styles.container}>
+        <Text>Loading...</Text>
       </View>
     );
   }
@@ -45,16 +54,21 @@ export const HomeScreen = () => {
     <View style={styles.container}>
       <FlatList
         data={requests}
-        renderItem={({item}) => <RequestCard request={item} />}
         keyExtractor={item => item.id}
-        contentContainerStyle={styles.list}
-        onRefresh={loadRequests}
-        refreshing={loading}
+        renderItem={({item}) => (
+          <TouchableOpacity
+            style={styles.requestCard}
+            onPress={() => handleRequestPress(item.id)}>
+            <Text style={styles.category}>{item.categoryId}</Text>
+            <Text style={styles.description}>{item.description}</Text>
+            <Text style={styles.date}>
+              {new Date(item.createdAt).toLocaleDateString()}
+            </Text>
+          </TouchableOpacity>
+        )}
       />
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => navigation.navigate(ROUTES.ADD_REQUEST)}>
-        <Icon name="plus" size={24} color="#fff" />
+      <TouchableOpacity style={styles.addButton} onPress={handleAddRequest}>
+        <Text style={styles.addButtonText}>+</Text>
       </TouchableOpacity>
     </View>
   );
@@ -63,33 +77,48 @@ export const HomeScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#fff',
   },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+  requestCard: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
   },
-  list: {
-    padding: 10,
+  category: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 8,
   },
-  fab: {
+  description: {
+    fontSize: 14,
+    marginBottom: 8,
+  },
+  date: {
+    fontSize: 12,
+    color: '#666',
+  },
+  addButton: {
     position: 'absolute',
-    right: 20,
-    bottom: 20,
+    right: 16,
+    bottom: 16,
     width: 56,
     height: 56,
     borderRadius: 28,
     backgroundColor: '#f4511e',
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 8,
+    elevation: 4,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 4,
+      height: 2,
     },
-    shadowOpacity: 0.3,
-    shadowRadius: 4.65,
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  addButtonText: {
+    fontSize: 24,
+    color: '#fff',
+    fontWeight: 'bold',
   },
 });

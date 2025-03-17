@@ -30,26 +30,29 @@ export const getRequests = async () => {
   return mockRequests;
 };
 
+export const getRequestById = async (id: string) => {
+  return mockRequests.find(request => request.id === id);
+};
+
 // Proposals
-export const saveProposal = async (
-  requestId: string,
-  proposal: Omit<Proposal, 'id'>,
-) => {
-  console.log('Saving mock proposal:', proposal);
+export const saveProposal = async (proposal: Omit<Proposal, 'id'>) => {
   const id = `proposal_${Date.now()}`;
+  const {requestId} = proposal;
+
   if (!mockProposals[requestId]) {
     mockProposals[requestId] = [];
   }
-  mockProposals[requestId].push({
+
+  const newProposal = {
     id,
-    requestId,
     ...proposal,
-  } as Proposal);
+  } as Proposal;
+
+  mockProposals[requestId].push(newProposal);
   return id;
 };
 
 export const getProposals = async (requestId: string) => {
-  console.log('Fetching mock proposals for request:', requestId);
   return mockProposals[requestId] || [];
 };
 

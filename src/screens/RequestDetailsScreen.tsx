@@ -1,192 +1,131 @@
-import React, {useState, useEffect} from 'react';
+import React, {useEffect, useState, useCallback} from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  Image,
   TextInput,
   TouchableOpacity,
   Alert,
+  Image,
 } from 'react-native';
-import {RouteProp, useRoute} from '@react-navigation/native';
-import {RootStackParamList} from '../navigation/AppNavigator';
-import {Request, Proposal} from '../types';
-import {ProposalCard} from '../components/ProposalCard';
-import {RatingStars} from '../components/RatingStars';
+import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {
-  createProposal,
-  createRating,
-  getRequestProposals,
-} from '../services/firebase';
+  getRequestById,
+  getProposals,
+  saveProposal,
+} from '../services/firebaseHelpers';
+import {Request, Proposal} from '../types';
+import {RootStackParamList} from '../types/navigation';
 
-type RequestDetailsRouteProp = RouteProp<RootStackParamList, 'RequestDetails'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'RequestDetails'>;
 
-export const RequestDetailsScreen = () => {
-  const route = useRoute<RequestDetailsRouteProp>();
+export const RequestDetailsScreen: React.FC<Props> = ({route}) => {
+  const {requestId} = route.params;
   const [request, setRequest] = useState<Request | null>(null);
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [price, setPrice] = useState('');
-  const [timeframe, setTimeframe] = useState('');
-  const [comment, setComment] = useState('');
-  const [rating, setRating] = useState(0);
-  const [ratingComment, setRatingComment] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [description, setDescription] = useState('');
+
+  const loadRequestDetails = useCallback(async () => {
+    try {
+      const requestData = await getRequestById(requestId);
+      if (requestData) {
+        setRequest(requestData);
+        const proposalsData = await getProposals(requestId);
+        setProposals(proposalsData);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to load request details');
+    }
+  }, [requestId]);
 
   useEffect(() => {
-    loadProposals();
-  }, []);
-
-  const loadProposals = async () => {
-    try {
-      const data = await getRequestProposals(route.params.requestId);
-      setProposals(data);
-    } catch (error) {
-      console.error('Error loading proposals:', error);
-    }
-  };
+    loadRequestDetails();
+  }, [loadRequestDetails]);
 
   const handleSubmitProposal = async () => {
-    if (!price.trim() || !timeframe.trim()) {
-      Alert.alert('Ошибка', 'Пожалуйста, укажите цену и срок выполнения');
+    if (!price || !description) {
+      Alert.alert('Error', 'Please fill in all fields');
       return;
     }
 
-    setLoading(true);
     try {
-      await createProposal({
-        requestId: route.params.requestId,
-        userId: 'provider123', // TODO: Заменить на реального пользователя
+      const proposal = {
+        requestId,
         price: Number(price),
-        timeframe,
-        comment,
-      });
+        description,
+        userId: 'provider1', // Mock user ID
+        createdAt: new Date(),
+      };
 
-      Alert.alert('Успех', 'Предложение успешно отправлено');
+      await saveProposal(proposal);
+      Alert.alert('Success', 'Proposal submitted successfully');
+      loadRequestDetails(); // Reload proposals
       setPrice('');
-      setTimeframe('');
-      setComment('');
-      loadProposals();
+      setDescription('');
     } catch (error) {
-      console.error('Error creating proposal:', error);
-      Alert.alert('Ошибка', 'Не удалось отправить предложение');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSubmitRating = async () => {
-    if (rating === 0) {
-      Alert.alert('Ошибка', 'Пожалуйста, выберите рейтинг');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await createRating({
-        requestId: route.params.requestId,
-        providerId: 'provider123', // TODO: Заменить на реального исполнителя
-        userId: 'user123', // TODO: Заменить на реального пользователя
-        stars: rating,
-        comment: ratingComment,
-      });
-
-      Alert.alert('Успех', 'Оценка успешно отправлена');
-      setRating(0);
-      setRatingComment('');
-    } catch (error) {
-      console.error('Error creating rating:', error);
-      Alert.alert('Ошибка', 'Не удалось отправить оценку');
-    } finally {
-      setLoading(false);
+      Alert.alert('Error', 'Failed to submit proposal');
     }
   };
 
   if (!request) {
-    return null;
+    return (
+      <View style={styles.container}>
+        <Text>Loading...</Text>
+      </View>
+    );
   }
 
   return (
     <ScrollView style={styles.container}>
-      <View style={styles.content}>
-        {request.photos.map((photo, index) => (
-          <Image
-            key={index}
-            source={{uri: photo}}
-            style={styles.photo}
-            resizeMode="cover"
-          />
-        ))}
-
+      <View style={styles.requestDetails}>
+        <Text style={styles.title}>Request Details</Text>
         <Text style={styles.description}>{request.description}</Text>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Предложения</Text>
-          {proposals.map(proposal => (
-            <ProposalCard
-              key={proposal.id}
-              proposal={proposal}
-              onAccept={() => {
-                // TODO: Реализовать принятие предложения
-                Alert.alert('Info', 'Функционал в разработке');
-              }}
+        <View style={styles.mediaContainer}>
+          {request.photos.map((photo, index) => (
+            <Image
+              key={index}
+              source={{uri: photo}}
+              style={styles.media}
+              resizeMode="cover"
             />
           ))}
         </View>
+      </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Добавить предложение</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Цена (₴)"
-            value={price}
-            onChangeText={setPrice}
-            keyboardType="numeric"
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Срок выполнения"
-            value={timeframe}
-            onChangeText={setTimeframe}
-          />
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            placeholder="Комментарий"
-            value={comment}
-            onChangeText={setComment}
-            multiline
-            numberOfLines={4}
-          />
-          <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
-            onPress={handleSubmitProposal}
-            disabled={loading}>
-            <Text style={styles.buttonText}>
-              {loading ? 'Отправка...' : 'Отправить предложение'}
-            </Text>
-          </TouchableOpacity>
-        </View>
+      <View style={styles.proposalForm}>
+        <Text style={styles.subtitle}>Submit Proposal</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Price"
+          value={price}
+          onChangeText={setPrice}
+          keyboardType="numeric"
+        />
+        <TextInput
+          style={[styles.input, styles.textArea]}
+          placeholder="Description"
+          value={description}
+          onChangeText={setDescription}
+          multiline
+          numberOfLines={4}
+        />
+        <TouchableOpacity style={styles.button} onPress={handleSubmitProposal}>
+          <Text style={styles.buttonText}>Submit Proposal</Text>
+        </TouchableOpacity>
+      </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Оценить исполнителя</Text>
-          <RatingStars rating={rating} onRatingChange={setRating} size={30} />
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            placeholder="Комментарий к оценке"
-            value={ratingComment}
-            onChangeText={setRatingComment}
-            multiline
-            numberOfLines={4}
-          />
-          <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
-            onPress={handleSubmitRating}
-            disabled={loading}>
-            <Text style={styles.buttonText}>
-              {loading ? 'Отправка...' : 'Отправить оценку'}
+      <View style={styles.proposalsList}>
+        <Text style={styles.subtitle}>Proposals</Text>
+        {proposals.map(proposal => (
+          <View key={proposal.id} style={styles.proposalCard}>
+            <Text style={styles.price}>${proposal.price}</Text>
+            <Text style={styles.proposalDescription}>
+              {proposal.description}
             </Text>
-          </TouchableOpacity>
-        </View>
+          </View>
+        ))}
       </View>
     </ScrollView>
   );
@@ -195,38 +134,51 @@ export const RequestDetailsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#fff',
   },
-  content: {
-    padding: 15,
+  requestDetails: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
   },
-  photo: {
-    width: '100%',
-    height: 200,
-    borderRadius: 10,
-    marginBottom: 10,
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 8,
   },
   description: {
     fontSize: 16,
-    marginBottom: 20,
-    lineHeight: 24,
+    marginBottom: 16,
   },
-  section: {
-    marginBottom: 20,
+  mediaContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
   },
-  sectionTitle: {
-    fontSize: 18,
+  media: {
+    width: 100,
+    height: 100,
+    borderRadius: 8,
+  },
+  proposalForm: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  subtitle: {
+    fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 10,
+    marginBottom: 16,
   },
   input: {
-    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ddd',
     borderRadius: 8,
     padding: 12,
-    marginBottom: 10,
+    marginBottom: 16,
   },
   textArea: {
-    minHeight: 100,
+    height: 100,
     textAlignVertical: 'top',
   },
   button: {
@@ -235,12 +187,27 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
   },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
   buttonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  proposalsList: {
+    padding: 16,
+  },
+  proposalCard: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 16,
+  },
+  price: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  proposalDescription: {
+    fontSize: 16,
   },
 });
