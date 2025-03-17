@@ -1,0 +1,57 @@
+# Cursor Rules Configuration
+
+# Language rules
+language:
+  default: en
+  allowed: [en]
+  file_naming: en
+  comments: en
+  string_literals: en
+  variable_naming: en
+
+# UI text rules
+ui_text:
+  language: en
+  examples:
+    - 'Add Request' # Not "Добавить заявку"
+    - 'Categories' # Not "Категории"
+    - 'Description' # Not "Описание"
+
+# Code style
+code_style:
+  naming:
+    variables: camelCase
+    functions: camelCase
+    classes: PascalCase
+    constants: UPPER_CASE
+  language: en
+
+# Commit message rules
+commit_message:
+  language: en
+  format: conventional
+  types:
+    - feat # New feature
+    - fix # Bug fix
+    - docs # Documentation changes
+    - style # Code style changes (formatting, etc)
+    - refactor # Code refactoring
+    - perf # Performance improvements
+    - test # Adding or updating tests
+    - chore # Maintenance tasks
+    - build # Build system changes
+    - ci # CI configuration changes
+    - revert # Revert previous changes
+
+  pattern: "^(feat|fix|docs|style|refactor|perf|test|chore|build|ci|revert)(\\(.+\\))?: .+"
+
+  examples:
+    - 'feat: add user authentication'
+    - 'fix(auth): resolve login issue'
+    - 'docs: update README with setup instructions'
+    - 'style: format code according to style guide'
+    - 'refactor(api): simplify data fetching logic'
+
+  error_messages:
+    non_english: 'All text must be in English'
+    invalid_format: 'Invalid format. Use: type(scope): message'

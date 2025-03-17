@@ -1,0 +1,326 @@
+import React, {useState} from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+  ScrollView,
+  Image,
+  ActivityIndicator,
+  Platform,
+  PermissionsAndroid,
+} from 'react-native';
+import {launchImageLibrary, Asset} from 'react-native-image-picker';
+import {CategoryPicker} from '../components/CategoryPicker';
+import {saveRequest, uploadMedia} from '../services/firebaseHelpers';
+import {useNavigation} from '@react-navigation/native';
+
+interface SelectedPhoto extends Asset {
+  localUri: string;
+  uploading?: boolean;
+  error?: boolean;
+}
+
+export const AddRequestScreen = () => {
+  const [category, setCategory] = useState<string | null>(null);
+  const [description, setDescription] = useState('');
+  const [photos, setPhotos] = useState<SelectedPhoto[]>([]);
+  const [loading, setLoading] = useState(false);
+  const navigation = useNavigation();
+
+  const checkPermissions = async () => {
+    if (Platform.OS === 'android') {
+      try {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+        );
+        return granted === PermissionsAndroid.RESULTS.GRANTED;
+      } catch (err) {
+        console.error('Permission error:', err);
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const handleSelectImage = async () => {
+    try {
+      const hasPermission = await checkPermissions();
+      if (!hasPermission) {
+        Alert.alert('Error', 'Storage permission is required');
+        return;
+      }
+
+      const result = await launchImageLibrary({
+        mediaType: 'photo',
+        quality: 0.8,
+        selectionLimit: 3 - photos.length,
+        includeBase64: false,
+      });
+
+      if (result.assets) {
+        const selectedPhotos = result.assets.map(asset => ({
+          ...asset,
+          localUri: asset.uri!,
+          uploading: false,
+          error: false,
+        }));
+        setPhotos(prev => [...prev, ...selectedPhotos]);
+      }
+    } catch (error) {
+      console.error('Error selecting photos:', error);
+      Alert.alert('Error', 'Failed to select photos');
+    }
+  };
+
+  const handleRemovePhoto = (index: number) => {
+    setPhotos(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSubmit = async () => {
+    try {
+      if (!category) {
+        Alert.alert('Error', 'Please select a category');
+        return;
+      }
+
+      if (!description.trim()) {
+        Alert.alert('Error', 'Please enter a description');
+        return;
+      }
+
+      setLoading(true);
+
+      // Upload photos one by one
+      const uploadedUrls: string[] = [];
+      for (let i = 0; i < photos.length; i++) {
+        try {
+          setPhotos(prev =>
+            prev.map((photo, index) =>
+              index === i ? {...photo, uploading: true} : photo,
+            ),
+          );
+
+          const url = await uploadMedia(photos[i].localUri, 'photo');
+          uploadedUrls.push(url);
+
+          setPhotos(prev =>
+            prev.map((photo, index) =>
+              index === i ? {...photo, uploading: false} : photo,
+            ),
+          );
+        } catch (error) {
+          console.error(`Error uploading photo ${i}:`, error);
+          setPhotos(prev =>
+            prev.map((photo, index) =>
+              index === i ? {...photo, uploading: false, error: true} : photo,
+            ),
+          );
+          throw new Error('Failed to upload photo');
+        }
+      }
+
+      // Save request
+      await saveRequest({
+        category,
+        description,
+        photos: uploadedUrls,
+        videos: [],
+        status: 'active' as const,
+        createdAt: new Date(),
+        userId: 'test-user', // Replace with actual user ID
+      });
+
+      Alert.alert('Success', 'Request created successfully');
+      navigation.goBack();
+    } catch (error) {
+      console.error('Error creating request:', error);
+      Alert.alert(
+        'Error',
+        'Failed to create request. Please check your photos and try again.',
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <ScrollView style={styles.container}>
+      <Text style={styles.label}>Category</Text>
+      <CategoryPicker
+        selectedCategory={category}
+        onSelectCategory={setCategory}
+      />
+
+      <Text style={styles.label}>Problem Description</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Describe your problem..."
+        value={description}
+        onChangeText={setDescription}
+        multiline
+        numberOfLines={4}
+      />
+
+      <Text style={styles.label}>Photos</Text>
+      {photos.length > 0 && (
+        <ScrollView horizontal style={styles.photoList}>
+          {photos.map((photo, index) => (
+            <View key={photo.localUri} style={styles.photoContainer}>
+              <Image
+                source={{uri: photo.localUri}}
+                style={[styles.photoPreview, photo.error && styles.photoError]}
+              />
+              {photo.uploading ? (
+                <View style={styles.uploadingOverlay}>
+                  <ActivityIndicator color="#fff" />
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.removeButton}
+                  onPress={() => handleRemovePhoto(index)}>
+                  <Text style={styles.removeButtonText}>×</Text>
+                </TouchableOpacity>
+              )}
+              {photo.error && (
+                <View style={styles.errorBadge}>
+                  <Text style={styles.errorBadgeText}>!</Text>
+                </View>
+              )}
+            </View>
+          ))}
+        </ScrollView>
+      )}
+
+      {photos.length < 3 && (
+        <TouchableOpacity
+          style={styles.imageButton}
+          onPress={handleSelectImage}>
+          <Text style={styles.imageButtonText}>
+            Add Photos ({photos.length}/3)
+          </Text>
+        </TouchableOpacity>
+      )}
+
+      <TouchableOpacity
+        style={[styles.submitButton, loading && styles.disabledButton]}
+        onPress={handleSubmit}
+        disabled={loading}>
+        <Text style={styles.submitButtonText}>
+          {loading ? 'Creating...' : 'Create Request'}
+        </Text>
+      </TouchableOpacity>
+    </ScrollView>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: '#fff',
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#333',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 20,
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  photoList: {
+    flexDirection: 'row',
+    marginBottom: 15,
+  },
+  photoContainer: {
+    marginRight: 10,
+    position: 'relative',
+  },
+  photoPreview: {
+    width: 100,
+    height: 100,
+    borderRadius: 8,
+  },
+  photoError: {
+    borderWidth: 2,
+    borderColor: '#ff4444',
+  },
+  uploadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  removeButton: {
+    position: 'absolute',
+    top: -10,
+    right: -10,
+    backgroundColor: '#ff4444',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  removeButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  errorBadge: {
+    position: 'absolute',
+    bottom: -10,
+    right: -10,
+    backgroundColor: '#ff4444',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorBadgeText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  imageButton: {
+    backgroundColor: '#e7e7e7',
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  imageButtonText: {
+    color: '#333',
+    fontSize: 16,
+  },
+  submitButton: {
+    backgroundColor: '#f4511e',
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  disabledButton: {
+    opacity: 0.7,
+  },
+  submitButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+});
