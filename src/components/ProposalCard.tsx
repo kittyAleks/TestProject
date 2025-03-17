@@ -29,7 +29,7 @@ export const ProposalCard: React.FC<ProposalCardProps> = ({
       {onAccept && (
         <TouchableOpacity style={styles.acceptButton} onPress={onAccept}>
           <Icon name="check" size={16} color="#fff" />
-          <Text style={styles.acceptButtonText}>Принять предложение</Text>
+          <Text style={styles.acceptButtonText}>Accept Proposal</Text>
         </TouchableOpacity>
       )}
     </View>

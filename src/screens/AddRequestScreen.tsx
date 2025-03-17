@@ -9,15 +9,13 @@ import {
   ScrollView,
   Image,
   ActivityIndicator,
-  Platform,
-  PermissionsAndroid,
 } from 'react-native';
 import {launchImageLibrary, Asset} from 'react-native-image-picker';
 import {CategoryPicker} from '../components/CategoryPicker';
-import {saveRequest, uploadMedia} from '../services/firebaseHelpers';
-import {useNavigation} from '@react-navigation/native';
+import {saveRequest} from '../services/firebaseHelpers';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../types/navigation';
+import {checkStoragePermission} from '../utils/permissions';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddRequest'>;
 
@@ -28,29 +26,14 @@ interface SelectedPhoto extends Asset {
 }
 
 export const AddRequestScreen: React.FC<Props> = ({navigation}) => {
-  const [category, setCategory] = useState<string | null>(null);
+  const [categoryId, setCategoryId] = useState<string>('');
   const [description, setDescription] = useState('');
   const [photos, setPhotos] = useState<SelectedPhoto[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const checkPermissions = async () => {
-    if (Platform.OS === 'android') {
-      try {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
-        );
-        return granted === PermissionsAndroid.RESULTS.GRANTED;
-      } catch (err) {
-        console.error('Permission error:', err);
-        return false;
-      }
-    }
-    return true;
-  };
-
   const handleSelectImage = async () => {
     try {
-      const hasPermission = await checkPermissions();
+      const hasPermission = await checkStoragePermission();
       if (!hasPermission) {
         Alert.alert('Error', 'Storage permission is required');
         return;
@@ -83,23 +66,32 @@ export const AddRequestScreen: React.FC<Props> = ({navigation}) => {
   };
 
   const handleSubmit = async () => {
-    if (!category || !description.trim()) {
+    if (!categoryId || !description.trim()) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      await saveRequest({
-        category,
-        description,
+      const requestData = {
+        categoryId,
+        description: description.trim(),
         photos: photos.map(photo => photo.localUri),
         videos: [],
-        status: 'active',
+        status: 'active' as const,
         createdAt: new Date(),
-        userId: 'test-user', // Replace with actual user ID
-      });
-      navigation.goBack();
+        userId: 'user-1',
+        location: {
+          latitude: 0,
+          longitude: 0,
+          address: '',
+        },
+      };
+
+      await saveRequest(requestData);
+      Alert.alert('Success', 'Request created successfully', [
+        {text: 'OK', onPress: () => navigation.goBack()},
+      ]);
     } catch (error) {
       console.error('Error saving request:', error);
       Alert.alert('Error', 'Failed to save request');
@@ -112,8 +104,8 @@ export const AddRequestScreen: React.FC<Props> = ({navigation}) => {
     <ScrollView style={styles.container}>
       <Text style={styles.label}>Category</Text>
       <CategoryPicker
-        selectedCategory={category}
-        onSelectCategory={setCategory}
+        selectedCategory={categoryId}
+        onSelectCategory={setCategoryId}
       />
 
       <Text style={styles.label}>Problem Description</Text>
@@ -147,11 +139,6 @@ export const AddRequestScreen: React.FC<Props> = ({navigation}) => {
                   <Text style={styles.removeButtonText}>×</Text>
                 </TouchableOpacity>
               )}
-              {photo.error && (
-                <View style={styles.errorBadge}>
-                  <Text style={styles.errorBadgeText}>!</Text>
-                </View>
-              )}
             </View>
           ))}
         </ScrollView>
@@ -160,7 +147,8 @@ export const AddRequestScreen: React.FC<Props> = ({navigation}) => {
       {photos.length < 3 && (
         <TouchableOpacity
           style={styles.imageButton}
-          onPress={handleSelectImage}>
+          onPress={handleSelectImage}
+          disabled={isSubmitting}>
           <Text style={styles.imageButtonText}>
             Add Photos ({photos.length}/3)
           </Text>
@@ -168,7 +156,7 @@ export const AddRequestScreen: React.FC<Props> = ({navigation}) => {
       )}
 
       <TouchableOpacity
-        style={[styles.submitButton, isSubmitting && styles.disabledButton]}
+        style={[styles.submitButton, isSubmitting && styles.buttonDisabled]}
         onPress={handleSubmit}
         disabled={isSubmitting}>
         {isSubmitting ? (
@@ -249,22 +237,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
-  errorBadge: {
-    position: 'absolute',
-    bottom: -10,
-    right: -10,
-    backgroundColor: '#ff4444',
-    borderRadius: 12,
-    width: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  errorBadgeText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
   imageButton: {
     backgroundColor: '#e7e7e7',
     padding: 15,
@@ -283,7 +255,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 20,
   },
-  disabledButton: {
+  buttonDisabled: {
     opacity: 0.7,
   },
   submitButtonText: {

@@ -6,8 +6,6 @@ import {ROUTES} from '../constants';
 import {HomeScreen} from '../screens/HomeScreen';
 import {AddRequestScreen} from '../screens/AddRequestScreen';
 import {RequestDetailsScreen} from '../screens/RequestDetailsScreen';
-// import ProfileScreen from '../screens/ProfileScreen';
-// import AuthScreen from '../screens/AuthScreen';
 
 export type RootStackParamList = {
   [ROUTES.HOME]: undefined;
@@ -36,28 +34,18 @@ export const AppNavigator = () => {
         <Stack.Screen
           name={ROUTES.HOME}
           component={HomeScreen}
-          options={{title: 'Заявки'}}
+          options={{title: 'Requests'}}
         />
         <Stack.Screen
           name={ROUTES.ADD_REQUEST}
           component={AddRequestScreen}
-          options={{title: 'Новая заявка'}}
+          options={{title: 'New Request'}}
         />
         <Stack.Screen
           name={ROUTES.REQUEST_DETAILS}
           component={RequestDetailsScreen}
-          options={{title: 'Детали заявки'}}
+          options={{title: 'Request Details'}}
         />
-        {/* <Stack.Screen
-          name={ROUTES.PROFILE}
-          component={ProfileScreen}
-          options={{title: 'Профиль'}}
-        />
-        <Stack.Screen
-          name={ROUTES.AUTH}
-          component={AuthScreen}
-          options={{title: 'Авторизация'}}
-        /> */}
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -1,10 +1,7 @@
 import {Request, Proposal, Rating} from '../types';
-import {
-  mockCategories,
-  mockRequests,
-  mockProposals,
-  mockRatings,
-} from '../data/mockData';
+import {mockCategories, mockProposals, mockRatings} from '../data/mockData';
+import {ref, set, push, get, child} from 'firebase/database';
+import {db} from '../config/firebase';
 
 // Initialize categories
 export const initializeCategories = async () => {
@@ -16,22 +13,82 @@ export const getCategories = async () => {
   return mockCategories;
 };
 
-// Requests
-export const saveRequest = async (request: Omit<Request, 'id'>) => {
-  const id = `request_${Date.now()}`;
-  mockRequests.push({
-    id,
-    ...request,
-  } as Request);
-  return id;
+// Transform Firebase data to Request type
+const transformRequest = (data: any): Request => ({
+  id: data.id,
+  userId: data.userId,
+  categoryId: data.categoryId,
+  description: data.description,
+  photos: data.photos || [],
+  videos: data.videos || [],
+  status: data.status,
+  createdAt: new Date(data.createdAt),
+  location: data.location || {
+    latitude: 0,
+    longitude: 0,
+    address: '',
+  },
+});
+
+// Save request
+export const saveRequest = async (
+  request: Omit<Request, 'id'>,
+): Promise<string> => {
+  try {
+    const newRequestRef = push(ref(db, 'requests'));
+    const newRequestId = newRequestRef.key;
+
+    if (!newRequestId) {
+      throw new Error('Failed to generate request ID');
+    }
+
+    await set(newRequestRef, {
+      ...request,
+      id: newRequestId,
+      createdAt: new Date().toISOString(),
+    });
+
+    console.log('Request saved successfully:', newRequestId);
+    return newRequestId;
+  } catch (error) {
+    console.error('Error saving request:', error);
+    throw error;
+  }
 };
 
-export const getRequests = async () => {
-  return mockRequests;
+// Get all requests
+export const getRequests = async (): Promise<Request[]> => {
+  try {
+    const snapshot = await get(child(ref(db), 'requests'));
+
+    if (snapshot.exists()) {
+      const data = snapshot.val();
+      const requests = Object.values(data).map(transformRequest);
+      console.log('Requests loaded:', requests.length);
+      return requests;
+    }
+
+    return [];
+  } catch (error) {
+    console.error('Error loading requests:', error);
+    throw error;
+  }
 };
 
-export const getRequestById = async (id: string) => {
-  return mockRequests.find(request => request.id === id);
+// Get request by ID
+export const getRequestById = async (id: string): Promise<Request | null> => {
+  try {
+    const snapshot = await get(child(ref(db), `requests/${id}`));
+
+    if (snapshot.exists()) {
+      return transformRequest(snapshot.val());
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Error loading request:', error);
+    throw error;
+  }
 };
 
 // Proposals

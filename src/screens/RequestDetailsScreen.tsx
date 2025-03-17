@@ -39,7 +39,7 @@ export const RequestDetailsScreen: React.FC<Props> = ({route, navigation}) => {
         const proposalsData = await getProposals(requestId);
         setProposals(proposalsData);
 
-        // Загружаем рейтинги для каждого предложения
+        // Load ratings for each proposal
         const ratingsData: Record<string, Rating[]> = {};
         for (const proposal of proposalsData) {
           const proposalRatings = await getRatings(proposal.id);
