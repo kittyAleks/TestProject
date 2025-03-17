@@ -16,6 +16,10 @@ import {launchImageLibrary, Asset} from 'react-native-image-picker';
 import {CategoryPicker} from '../components/CategoryPicker';
 import {saveRequest, uploadMedia} from '../services/firebaseHelpers';
 import {useNavigation} from '@react-navigation/native';
+import {NativeStackScreenProps} from '@react-navigation/native-stack';
+import {RootStackParamList} from '../types/navigation';
+
+type Props = NativeStackScreenProps<RootStackParamList, 'AddRequest'>;
 
 interface SelectedPhoto extends Asset {
   localUri: string;
@@ -23,12 +27,11 @@ interface SelectedPhoto extends Asset {
   error?: boolean;
 }
 
-export const AddRequestScreen = () => {
+export const AddRequestScreen: React.FC<Props> = ({navigation}) => {
   const [category, setCategory] = useState<string | null>(null);
   const [description, setDescription] = useState('');
   const [photos, setPhotos] = useState<SelectedPhoto[]>([]);
-  const [loading, setLoading] = useState(false);
-  const navigation = useNavigation();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const checkPermissions = async () => {
     if (Platform.OS === 'android') {
@@ -80,69 +83,28 @@ export const AddRequestScreen = () => {
   };
 
   const handleSubmit = async () => {
+    if (!category || !description.trim()) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
-      if (!category) {
-        Alert.alert('Error', 'Please select a category');
-        return;
-      }
-
-      if (!description.trim()) {
-        Alert.alert('Error', 'Please enter a description');
-        return;
-      }
-
-      setLoading(true);
-
-      // Upload photos one by one
-      const uploadedUrls: string[] = [];
-      for (let i = 0; i < photos.length; i++) {
-        try {
-          setPhotos(prev =>
-            prev.map((photo, index) =>
-              index === i ? {...photo, uploading: true} : photo,
-            ),
-          );
-
-          const url = await uploadMedia(photos[i].localUri, 'photo');
-          uploadedUrls.push(url);
-
-          setPhotos(prev =>
-            prev.map((photo, index) =>
-              index === i ? {...photo, uploading: false} : photo,
-            ),
-          );
-        } catch (error) {
-          console.error(`Error uploading photo ${i}:`, error);
-          setPhotos(prev =>
-            prev.map((photo, index) =>
-              index === i ? {...photo, uploading: false, error: true} : photo,
-            ),
-          );
-          throw new Error('Failed to upload photo');
-        }
-      }
-
-      // Save request
       await saveRequest({
         category,
         description,
-        photos: uploadedUrls,
+        photos: photos.map(photo => photo.localUri),
         videos: [],
-        status: 'active' as const,
+        status: 'active',
         createdAt: new Date(),
         userId: 'test-user', // Replace with actual user ID
       });
-
-      Alert.alert('Success', 'Request created successfully');
       navigation.goBack();
     } catch (error) {
-      console.error('Error creating request:', error);
-      Alert.alert(
-        'Error',
-        'Failed to create request. Please check your photos and try again.',
-      );
+      console.error('Error saving request:', error);
+      Alert.alert('Error', 'Failed to save request');
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -156,12 +118,13 @@ export const AddRequestScreen = () => {
 
       <Text style={styles.label}>Problem Description</Text>
       <TextInput
-        style={styles.input}
+        style={[styles.input, styles.textArea]}
         placeholder="Describe your problem..."
         value={description}
         onChangeText={setDescription}
         multiline
         numberOfLines={4}
+        editable={!isSubmitting}
       />
 
       <Text style={styles.label}>Photos</Text>
@@ -205,12 +168,14 @@ export const AddRequestScreen = () => {
       )}
 
       <TouchableOpacity
-        style={[styles.submitButton, loading && styles.disabledButton]}
+        style={[styles.submitButton, isSubmitting && styles.disabledButton]}
         onPress={handleSubmit}
-        disabled={loading}>
-        <Text style={styles.submitButtonText}>
-          {loading ? 'Creating...' : 'Create Request'}
-        </Text>
+        disabled={isSubmitting}>
+        {isSubmitting ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.submitButtonText}>Create Request</Text>
+        )}
       </TouchableOpacity>
     </ScrollView>
   );
@@ -232,9 +197,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 8,
-    padding: 10,
-    marginBottom: 20,
-    minHeight: 100,
+    padding: 12,
+    marginBottom: 16,
+    fontSize: 16,
+  },
+  textArea: {
+    height: 120,
     textAlignVertical: 'top',
   },
   photoList: {

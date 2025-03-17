@@ -6,6 +6,7 @@ import {
   FlatList,
   TouchableOpacity,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {getRequests} from '../services/firebaseHelpers';
@@ -17,6 +18,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 export const HomeScreen: React.FC<Props> = ({navigation}) => {
   const [requests, setRequests] = useState<Request[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const loadRequests = async () => {
     try {
@@ -27,7 +29,13 @@ export const HomeScreen: React.FC<Props> = ({navigation}) => {
       Alert.alert('Error', 'Failed to load requests');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadRequests();
   };
 
   useEffect(() => {
@@ -42,9 +50,9 @@ export const HomeScreen: React.FC<Props> = ({navigation}) => {
     navigation.navigate('RequestDetails', {requestId});
   };
 
-  if (loading) {
+  if (loading && !refreshing) {
     return (
-      <View style={styles.container}>
+      <View style={styles.centerContainer}>
         <Text>Loading...</Text>
       </View>
     );
@@ -55,6 +63,9 @@ export const HomeScreen: React.FC<Props> = ({navigation}) => {
       <FlatList
         data={requests}
         keyExtractor={item => item.id}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
         renderItem={({item}) => (
           <TouchableOpacity
             style={styles.requestCard}
@@ -65,6 +76,11 @@ export const HomeScreen: React.FC<Props> = ({navigation}) => {
               {new Date(item.createdAt).toLocaleDateString()}
             </Text>
           </TouchableOpacity>
+        )}
+        ListEmptyComponent={() => (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No requests found</Text>
+          </View>
         )}
       />
       <TouchableOpacity style={styles.addButton} onPress={handleAddRequest}>
@@ -78,6 +94,22 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#666',
   },
   requestCard: {
     padding: 16,
