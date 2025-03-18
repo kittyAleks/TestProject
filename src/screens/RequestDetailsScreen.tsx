@@ -114,19 +114,37 @@ export const RequestDetailsScreen: React.FC<Props> = ({route, navigation}) => {
 
   const renderImages = () => {
     if (!request?.photos?.length) {
-      return null;
+      return (
+        <View style={styles.noPhotosContainer}>
+          <Text style={styles.noPhotosText}>Нет доступных фотографий</Text>
+        </View>
+      );
     }
 
     return (
       <View style={styles.mediaContainer}>
         {request.photos.map((photo, index) => (
           <View key={index} style={styles.imageWrapper}>
-            <Image
-              source={{uri: photo}}
-              style={styles.media}
-              resizeMode="cover"
-              onError={error => console.error('Image loading error:', error)}
-            />
+            {photo ? (
+              <Image
+                source={{uri: photo}}
+                style={styles.media}
+                resizeMode="cover"
+                onLoadStart={() => console.log('Loading image:', photo)}
+                onLoadEnd={() => console.log('Image loaded:', photo)}
+                onError={() => {
+                  console.error(
+                    `Error loading image at index ${index}:`,
+                    photo,
+                  );
+                  Alert.alert('Ошибка', 'Не удалось загрузить изображение');
+                }}
+              />
+            ) : (
+              <View style={styles.placeholderContainer}>
+                <Text style={styles.placeholderText}>Фото</Text>
+              </View>
+            )}
           </View>
         ))}
       </View>
@@ -224,11 +242,12 @@ const styles = StyleSheet.create({
     aspectRatio: 1,
     borderRadius: 8,
     overflow: 'hidden',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#e1e1e1',
   },
   media: {
     width: '100%',
     height: '100%',
+    backgroundColor: '#e1e1e1',
   },
   proposalForm: {
     padding: 16,
@@ -301,5 +320,25 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: 'bold',
+  },
+  noPhotosContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  noPhotosText: {
+    fontSize: 16,
+    color: '#666',
+  },
+  placeholderContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#e1e1e1',
+  },
+  placeholderText: {
+    fontSize: 16,
+    color: '#666',
   },
 });
