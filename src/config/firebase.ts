@@ -1,14 +1,22 @@
 import {initializeApp} from 'firebase/app';
 import {getDatabase} from 'firebase/database';
 import {getStorage} from 'firebase/storage';
+import {
+  FIREBASE_API_KEY,
+  FIREBASE_AUTH_DOMAIN,
+  FIREBASE_PROJECT_ID,
+  FIREBASE_STORAGE_BUCKET,
+  FIREBASE_MESSAGING_SENDER_ID,
+  FIREBASE_APP_ID,
+} from '@env';
 
 const firebaseConfig = {
-  apiKey: 'AIzasy8MAaN6NFaG08hP9U5VrqInQM1idwSI5Ig',
-  authDomain: 'creatingapp-f78ad.firebaseapp.com',
-  projectId: 'creatingapp-f78ad',
-  storageBucket: 'creatingapp-f78ad.appspot.com',
-  messagingSenderId: '76929809769',
-  appId: '1:76929809769:ios:55c836aed858c8e807d1f8',
+  apiKey: FIREBASE_API_KEY,
+  authDomain: FIREBASE_AUTH_DOMAIN,
+  projectId: FIREBASE_PROJECT_ID,
+  storageBucket: FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: FIREBASE_MESSAGING_SENDER_ID,
+  appId: FIREBASE_APP_ID,
 };
 
 const app = initializeApp(firebaseConfig);
