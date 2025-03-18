@@ -1,5 +1,4 @@
 import {Request, Proposal, Rating} from '../types';
-import {mockCategories, mockProposals, mockRatings} from '../data/mockData';
 import {ref, set, push, get, child} from 'firebase/database';
 import {db} from '../config/firebase';
 
@@ -8,9 +7,18 @@ export const initializeCategories = async () => {
   return true;
 };
 
-// Get categories
+// Get categories from Firebase
 export const getCategories = async () => {
-  return mockCategories;
+  try {
+    const snapshot = await get(child(ref(db), 'categories'));
+    if (snapshot.exists()) {
+      return Object.values(snapshot.val());
+    }
+    return [];
+  } catch (error) {
+    console.error('Error loading categories:', error);
+    throw error;
+  }
 };
 
 // Transform Firebase data to Request type
@@ -91,52 +99,91 @@ export const getRequestById = async (id: string): Promise<Request | null> => {
   }
 };
 
-// Proposals
-export const saveProposal = async (proposal: Omit<Proposal, 'id'>) => {
-  const id = `proposal_${Date.now()}`;
-  const {requestId} = proposal;
+// Save proposal
+export const saveProposal = async (
+  proposal: Omit<Proposal, 'id'>,
+): Promise<string> => {
+  try {
+    const newProposalRef = push(ref(db, `proposals/${proposal.requestId}`));
+    const newProposalId = newProposalRef.key;
 
-  if (!mockProposals[requestId]) {
-    mockProposals[requestId] = [];
+    if (!newProposalId) {
+      throw new Error('Failed to generate proposal ID');
+    }
+
+    await set(newProposalRef, {
+      ...proposal,
+      id: newProposalId,
+      createdAt: new Date().toISOString(),
+    });
+
+    return newProposalId;
+  } catch (error) {
+    console.error('Error saving proposal:', error);
+    throw error;
   }
-
-  const newProposal = {
-    id,
-    ...proposal,
-  } as Proposal;
-
-  mockProposals[requestId].push(newProposal);
-  return id;
 };
 
-export const getProposals = async (requestId: string) => {
-  return mockProposals[requestId] || [];
+// Get proposals for request
+export const getProposals = async (requestId: string): Promise<Proposal[]> => {
+  try {
+    const snapshot = await get(child(ref(db), `proposals/${requestId}`));
+    if (snapshot.exists()) {
+      return Object.values(snapshot.val());
+    }
+    return [];
+  } catch (error) {
+    console.error('Error loading proposals:', error);
+    throw error;
+  }
 };
 
-// Ratings
+// Save rating
 export const saveRating = async (
   ratingData: Omit<Rating, 'id'>,
 ): Promise<string> => {
-  const id = `rating-${Date.now()}`;
-  mockRatings[id] = {
-    ...ratingData,
-    id,
-  };
-  return id;
+  try {
+    const newRatingRef = push(ref(db, `ratings/${ratingData.proposalId}`));
+    const newRatingId = newRatingRef.key;
+
+    if (!newRatingId) {
+      throw new Error('Failed to generate rating ID');
+    }
+
+    await set(newRatingRef, {
+      ...ratingData,
+      id: newRatingId,
+      createdAt: new Date().toISOString(),
+    });
+
+    return newRatingId;
+  } catch (error) {
+    console.error('Error saving rating:', error);
+    throw error;
+  }
 };
 
+// Get ratings for proposal
 export const getRatings = async (proposalId: string): Promise<Rating[]> => {
-  return Object.values(mockRatings).filter(
-    rating => rating.proposalId === proposalId,
-  );
+  try {
+    const snapshot = await get(child(ref(db), `ratings/${proposalId}`));
+    if (snapshot.exists()) {
+      return Object.values(snapshot.val());
+    }
+    return [];
+  } catch (error) {
+    console.error('Error loading ratings:', error);
+    throw error;
+  }
 };
 
 // Upload media
 export const uploadMedia = async (
-  _uri: string,
-  _type: 'photo' | 'video',
+  uri: string,
+  type: 'photo' | 'video',
 ): Promise<string> => {
-  return `https://picsum.photos/200/300?random=${Date.now()}`;
+  // TODO: Implement Firebase Storage upload
+  return uri;
 };
 
 // Test database connection

@@ -6,8 +6,8 @@ import {
   StyleSheet,
   ScrollView,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/FontAwesome';
-import {categories} from '../data/categories';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import {categories, Category} from '../data/categories';
 
 interface CategoryPickerProps {
   selectedCategory: string | null;
@@ -21,7 +21,7 @@ export const CategoryPicker: React.FC<CategoryPickerProps> = ({
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
       <View style={styles.container}>
-        {categories.map(category => (
+        {categories.map((category: Category) => (
           <TouchableOpacity
             key={category.id}
             style={[
@@ -56,9 +56,10 @@ const styles = StyleSheet.create({
   categoryButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 10,
+    padding: 12,
+    paddingHorizontal: 16,
     marginRight: 10,
-    borderRadius: 20,
+    borderRadius: 25,
     borderWidth: 1,
     borderColor: '#f4511e',
   },
@@ -68,7 +69,8 @@ const styles = StyleSheet.create({
   categoryText: {
     marginLeft: 8,
     color: '#f4511e',
-    fontSize: 14,
+    fontSize: 16,
+    fontWeight: '500',
   },
   selectedCategoryText: {
     color: '#fff',

@@ -112,21 +112,33 @@ export const RequestDetailsScreen: React.FC<Props> = ({route, navigation}) => {
     );
   }
 
+  const renderImages = () => {
+    if (!request?.photos?.length) {
+      return null;
+    }
+
+    return (
+      <View style={styles.mediaContainer}>
+        {request.photos.map((photo, index) => (
+          <View key={index} style={styles.imageWrapper}>
+            <Image
+              source={{uri: photo}}
+              style={styles.media}
+              resizeMode="cover"
+              onError={error => console.error('Image loading error:', error)}
+            />
+          </View>
+        ))}
+      </View>
+    );
+  };
+
   return (
     <ScrollView style={styles.container}>
       <View style={styles.requestDetails}>
         <Text style={styles.title}>Request Details</Text>
-        <Text style={styles.description}>{request.description}</Text>
-        <View style={styles.mediaContainer}>
-          {request.photos.map((photo, index) => (
-            <Image
-              key={index}
-              source={{uri: photo}}
-              style={styles.media}
-              resizeMode="cover"
-            />
-          ))}
-        </View>
+        <Text style={styles.description}>{request?.description}</Text>
+        {renderImages()}
       </View>
 
       <View style={styles.proposalForm}>
@@ -204,12 +216,19 @@ const styles = StyleSheet.create({
   mediaContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    marginTop: 10,
+    gap: 10,
+  },
+  imageWrapper: {
+    width: '48%',
+    aspectRatio: 1,
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: '#f5f5f5',
   },
   media: {
-    width: 100,
-    height: 100,
-    borderRadius: 8,
+    width: '100%',
+    height: '100%',
   },
   proposalForm: {
     padding: 16,
