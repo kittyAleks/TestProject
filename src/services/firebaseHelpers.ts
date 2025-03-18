@@ -2,12 +2,10 @@ import {Request, Proposal, Rating} from '../types';
 import {ref, set, push, get, child} from 'firebase/database';
 import {db} from '../config/firebase';
 
-// Initialize categories
 export const initializeCategories = async () => {
   return true;
 };
 
-// Get categories from Firebase
 export const getCategories = async () => {
   try {
     const snapshot = await get(child(ref(db), 'categories'));
@@ -21,7 +19,6 @@ export const getCategories = async () => {
   }
 };
 
-// Transform Firebase data to Request type
 const transformRequest = (data: any): Request => ({
   id: data.id,
   userId: data.userId,
@@ -38,7 +35,6 @@ const transformRequest = (data: any): Request => ({
   },
 });
 
-// Save request
 export const saveRequest = async (
   request: Omit<Request, 'id'>,
 ): Promise<string> => {
@@ -64,7 +60,6 @@ export const saveRequest = async (
   }
 };
 
-// Get all requests
 export const getRequests = async (): Promise<Request[]> => {
   try {
     const snapshot = await get(child(ref(db), 'requests'));
@@ -83,7 +78,6 @@ export const getRequests = async (): Promise<Request[]> => {
   }
 };
 
-// Get request by ID
 export const getRequestById = async (id: string): Promise<Request | null> => {
   try {
     const snapshot = await get(child(ref(db), `requests/${id}`));
@@ -99,7 +93,6 @@ export const getRequestById = async (id: string): Promise<Request | null> => {
   }
 };
 
-// Save proposal
 export const saveProposal = async (
   proposal: Omit<Proposal, 'id'>,
 ): Promise<string> => {
@@ -124,7 +117,6 @@ export const saveProposal = async (
   }
 };
 
-// Get proposals for request
 export const getProposals = async (requestId: string): Promise<Proposal[]> => {
   try {
     const snapshot = await get(child(ref(db), `proposals/${requestId}`));
@@ -138,7 +130,6 @@ export const getProposals = async (requestId: string): Promise<Proposal[]> => {
   }
 };
 
-// Save rating
 export const saveRating = async (
   ratingData: Omit<Rating, 'id'>,
 ): Promise<string> => {
@@ -163,7 +154,6 @@ export const saveRating = async (
   }
 };
 
-// Get ratings for proposal
 export const getRatings = async (proposalId: string): Promise<Rating[]> => {
   try {
     const snapshot = await get(child(ref(db), `ratings/${proposalId}`));
@@ -177,16 +167,11 @@ export const getRatings = async (proposalId: string): Promise<Rating[]> => {
   }
 };
 
-// Upload media
-export const uploadMedia = async (
-  uri: string,
-  type: 'photo' | 'video',
-): Promise<string> => {
+export const uploadMedia = async (uri: string): Promise<string> => {
   // TODO: Implement Firebase Storage upload
   return uri;
 };
 
-// Test database connection
 export const testDatabaseConnection = async () => {
   console.log('Mock database connection test');
   return true;

@@ -69,7 +69,7 @@ export const AddRequestScreen: React.FC<Props> = ({navigation}) => {
       const uploadedPhotos = await Promise.all(
         photos.map(async photo => {
           try {
-            return await uploadMedia(photo.localUri, 'photo');
+            return await uploadMedia(photo.localUri);
           } catch (error) {
             console.error('Error uploading photo:', error);
             return null;
@@ -77,13 +77,18 @@ export const AddRequestScreen: React.FC<Props> = ({navigation}) => {
         }),
       );
 
+      const validPhotos = uploadedPhotos.filter(
+        (url): url is string => url !== null,
+      );
+
       const requestData = {
         categoryId,
         description: description.trim(),
-        photos: uploadedPhotos.filter(Boolean),
+        photos: validPhotos,
         videos: [],
         status: 'active' as const,
         userId: 'user-1',
+        createdAt: new Date().toISOString(),
         location: {
           latitude: 0,
           longitude: 0,

@@ -1,18 +1,22 @@
+export interface Location {
+  latitude: number;
+  longitude: number;
+  address: string;
+}
+
 export interface Request {
   id: string;
-  userId: string;
+  categoryId: string;
+  description: string;
   photos: string[];
   videos: string[];
-  description: string;
-  categoryId: string;
-  createdAt: Date;
-  status: 'active' | 'completed';
-  location: {
-    latitude: number;
-    longitude: number;
-    address: string;
-  };
+  status: 'active' | 'completed' | 'cancelled';
+  userId: string;
+  createdAt: string;
+  location: Location;
 }
+
+export type RequestCreate = Omit<Request, 'id'>;
 
 export interface Proposal {
   id: string;
@@ -44,3 +48,10 @@ export interface Category {
   name: string;
   icon: string;
 }
+
+export type NavigationParams = {
+  Home: undefined;
+  AddRequest: undefined;
+  RequestDetails: {requestId: string};
+  CategoryList: undefined;
+};
