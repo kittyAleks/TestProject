@@ -1,3 +1,12 @@
+# Cursor specific
+.cursor
+.cursor.json
+cursor.json
+.cursor/
+cursor/
+.cursor-*
+cursor.config.json
+
 # OSX
 #
 .DS_Store

@@ -27,7 +27,7 @@ const transformRequest = (data: any): Request => ({
   photos: data.photos || [],
   videos: data.videos || [],
   status: data.status,
-  createdAt: new Date(data.createdAt),
+  createdAt: data.createdAt,
   location: data.location || {
     latitude: 0,
     longitude: 0,
