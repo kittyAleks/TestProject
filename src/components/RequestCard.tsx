@@ -4,13 +4,14 @@ import {Request} from '../types';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import {useNavigation} from '@react-navigation/native';
 import {ROUTES} from '../constants';
+import {NavigationProp} from '../types/navigation';
 
 interface RequestCardProps {
   request: Request;
 }
 
 export const RequestCard: React.FC<RequestCardProps> = ({request}) => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp>();
 
   return (
     <TouchableOpacity
@@ -23,7 +24,7 @@ export const RequestCard: React.FC<RequestCardProps> = ({request}) => {
       )}
       <View style={styles.content}>
         <Text style={styles.category}>
-          <Icon name="tag" size={14} /> {request.category}
+          <Icon name="tag" size={14} /> {request.categoryId}
         </Text>
         <Text style={styles.description} numberOfLines={2}>
           {request.description}

@@ -38,8 +38,6 @@ export const RequestDetailsScreen: React.FC<Props> = ({route, navigation}) => {
         setRequest(requestData);
         const proposalsData = await getProposals(requestId);
         setProposals(proposalsData);
-
-        // Load ratings for each proposal
         const ratingsData: Record<string, Rating[]> = {};
         for (const proposal of proposalsData) {
           const proposalRatings = await getRatings(proposal.id);
@@ -69,13 +67,13 @@ export const RequestDetailsScreen: React.FC<Props> = ({route, navigation}) => {
         requestId,
         price: Number(price),
         description,
-        userId: 'provider1', // Mock user ID
+        userId: 'provider1',
         createdAt: new Date(),
       };
 
       await saveProposal(proposal);
       Alert.alert('Success', 'Proposal submitted successfully');
-      loadRequestDetails(); // Reload proposals
+      loadRequestDetails();
       setPrice('');
       setDescription('');
     } catch (error) {
@@ -116,7 +114,7 @@ export const RequestDetailsScreen: React.FC<Props> = ({route, navigation}) => {
     if (!request?.photos?.length) {
       return (
         <View style={styles.noPhotosContainer}>
-          <Text style={styles.noPhotosText}>Нет доступных фотографий</Text>
+          <Text style={styles.noPhotosText}>No photos available</Text>
         </View>
       );
     }
@@ -137,7 +135,7 @@ export const RequestDetailsScreen: React.FC<Props> = ({route, navigation}) => {
                     `Error loading image at index ${index}:`,
                     photo,
                   );
-                  Alert.alert('Ошибка', 'Не удалось загрузить изображение');
+                  Alert.alert('Error', 'Failed to load image');
                 }}
               />
             ) : (

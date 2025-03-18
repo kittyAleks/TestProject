@@ -1,3 +1,5 @@
+import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+
 export type RootStackParamList = {
   Home: undefined;
   AddRequest: undefined;
@@ -8,3 +10,5 @@ export type RootStackParamList = {
     proposalId: string;
   };
 };
+
+export type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
