@@ -1,18 +1,11 @@
 import React, {useState} from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  TouchableOpacity,
-  Alert,
-  ScrollView,
-  Image,
-  ActivityIndicator,
-} from 'react-native';
+import {ScrollView, Alert, StyleSheet} from 'react-native';
 import {launchImageLibrary, Asset} from 'react-native-image-picker';
 import {CategoryPicker} from '../components/CategoryPicker';
-import {saveRequest} from '../services/firebaseHelpers';
+import {Button} from '../components/ui/Button';
+import {TextField} from '../components/ui/TextField';
+import {ImageUploader} from '../components/ui/ImageUploader';
+import {saveRequest, uploadMedia} from '../services/firebaseHelpers';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../types/navigation';
 import {checkStoragePermission} from '../utils/permissions';
@@ -26,7 +19,7 @@ interface SelectedPhoto extends Asset {
 }
 
 export const AddRequestScreen: React.FC<Props> = ({navigation}) => {
-  const [categoryId, setCategoryId] = useState<string>('');
+  const [categoryId, setCategoryId] = useState('');
   const [description, setDescription] = useState('');
   const [photos, setPhotos] = useState<SelectedPhoto[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -49,7 +42,7 @@ export const AddRequestScreen: React.FC<Props> = ({navigation}) => {
       if (result.assets) {
         const selectedPhotos = result.assets.map(asset => ({
           ...asset,
-          localUri: asset.uri!,
+          localUri: asset.uri ?? '',
           uploading: false,
           error: false,
         }));
@@ -73,13 +66,23 @@ export const AddRequestScreen: React.FC<Props> = ({navigation}) => {
 
     setIsSubmitting(true);
     try {
+      const uploadedPhotos = await Promise.all(
+        photos.map(async photo => {
+          try {
+            return await uploadMedia(photo.localUri, 'photo');
+          } catch (error) {
+            console.error('Error uploading photo:', error);
+            return null;
+          }
+        }),
+      );
+
       const requestData = {
         categoryId,
         description: description.trim(),
-        photos: photos.map(photo => photo.localUri),
+        photos: uploadedPhotos.filter(Boolean),
         videos: [],
         status: 'active' as const,
-        createdAt: new Date(),
         userId: 'user-1',
         location: {
           latitude: 0,
@@ -102,15 +105,13 @@ export const AddRequestScreen: React.FC<Props> = ({navigation}) => {
 
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.label}>Category</Text>
       <CategoryPicker
         selectedCategory={categoryId}
         onSelectCategory={setCategoryId}
       />
 
-      <Text style={styles.label}>Problem Description</Text>
-      <TextInput
-        style={[styles.input, styles.textArea]}
+      <TextField
+        label="Problem Description"
         placeholder="Describe your problem..."
         value={description}
         onChangeText={setDescription}
@@ -119,52 +120,20 @@ export const AddRequestScreen: React.FC<Props> = ({navigation}) => {
         editable={!isSubmitting}
       />
 
-      <Text style={styles.label}>Photos</Text>
-      {photos.length > 0 && (
-        <ScrollView horizontal style={styles.photoList}>
-          {photos.map((photo, index) => (
-            <View key={photo.localUri} style={styles.photoContainer}>
-              <Image
-                source={{uri: photo.localUri}}
-                style={[styles.photoPreview, photo.error && styles.photoError]}
-              />
-              {photo.uploading ? (
-                <View style={styles.uploadingOverlay}>
-                  <ActivityIndicator color="#fff" />
-                </View>
-              ) : (
-                <TouchableOpacity
-                  style={styles.removeButton}
-                  onPress={() => handleRemovePhoto(index)}>
-                  <Text style={styles.removeButtonText}>×</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          ))}
-        </ScrollView>
-      )}
+      <ImageUploader
+        photos={photos}
+        onSelectImage={handleSelectImage}
+        onRemoveImage={handleRemovePhoto}
+        maxImages={3}
+        isSubmitting={isSubmitting}
+      />
 
-      {photos.length < 3 && (
-        <TouchableOpacity
-          style={styles.imageButton}
-          onPress={handleSelectImage}
-          disabled={isSubmitting}>
-          <Text style={styles.imageButtonText}>
-            Add Photos ({photos.length}/3)
-          </Text>
-        </TouchableOpacity>
-      )}
-
-      <TouchableOpacity
-        style={[styles.submitButton, isSubmitting && styles.buttonDisabled]}
+      <Button
+        title="Create Request"
         onPress={handleSubmit}
-        disabled={isSubmitting}>
-        {isSubmitting ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.submitButtonText}>Create Request</Text>
-        )}
-      </TouchableOpacity>
+        loading={isSubmitting}
+        disabled={isSubmitting}
+      />
     </ScrollView>
   );
 };
@@ -174,93 +143,5 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
     backgroundColor: '#fff',
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    color: '#333',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-    fontSize: 16,
-  },
-  textArea: {
-    height: 120,
-    textAlignVertical: 'top',
-  },
-  photoList: {
-    flexDirection: 'row',
-    marginBottom: 15,
-  },
-  photoContainer: {
-    marginRight: 10,
-    position: 'relative',
-  },
-  photoPreview: {
-    width: 100,
-    height: 100,
-    borderRadius: 8,
-  },
-  photoError: {
-    borderWidth: 2,
-    borderColor: '#ff4444',
-  },
-  uploadingOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  removeButton: {
-    position: 'absolute',
-    top: -10,
-    right: -10,
-    backgroundColor: '#ff4444',
-    borderRadius: 12,
-    width: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  removeButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  imageButton: {
-    backgroundColor: '#e7e7e7',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  imageButtonText: {
-    color: '#333',
-    fontSize: 16,
-  },
-  submitButton: {
-    backgroundColor: '#f4511e',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-  submitButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
   },
 });
